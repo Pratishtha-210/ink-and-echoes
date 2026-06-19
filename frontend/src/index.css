@@ -1,0 +1,110 @@
+@import "tailwindcss";
+
+@theme {
+  --color-luxury-bg: #050505;
+  --color-luxury-card: #0F0F0F;
+  --color-luxury-gold: #D4AF37;
+  --color-luxury-goldMuted: #AA8417;
+  --color-luxury-goldDark: #7C5D06;
+  --color-luxury-text: #FFFFFF;
+  --color-luxury-muted: #B3B3B3;
+  --color-luxury-border: #1F1F1F;
+
+  --font-sans: 'Inter', sans-serif;
+  --font-serif: 'Playfair Display', serif;
+  --font-poetry: 'Cormorant Garamond', serif;
+
+  --shadow-gold-glow: 0 0 15px rgba(212, 175, 55, 0.15);
+  --shadow-gold-glow-hover: 0 0 25px rgba(212, 175, 55, 0.35);
+}
+
+@layer base {
+  html {
+    scroll-behavior: smooth;
+    background-color: #050505;
+    color: #ffffff;
+    font-family: 'Inter', sans-serif;
+  }
+
+  /* Custom Premium Scrollbar */
+  ::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+  ::-webkit-scrollbar-track {
+    background: #050505;
+  }
+  ::-webkit-scrollbar-thumb {
+    background: #1f1f1f;
+    border-radius: 3px;
+    transition: background 0.3s ease;
+  }
+  ::-webkit-scrollbar-thumb:hover {
+    background: #D4AF37;
+  }
+
+  body {
+    overflow-x: hidden;
+  }
+}
+
+/* Glassmorphism Styles */
+.glass-panel {
+  background: rgba(15, 15, 15, 0.7);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.glass-panel-gold {
+  background: rgba(15, 15, 15, 0.85);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(212, 175, 55, 0.15);
+}
+
+/* Ambient Radial Glow */
+.ambient-glow {
+  background: radial-gradient(circle 800px at var(--x, 50%) var(--y, 50%), rgba(212, 175, 55, 0.035), transparent 80%);
+  pointer-events: none;
+}
+
+/* Gold Text Gradient */
+.gold-text-gradient {
+  background: linear-gradient(135deg, #FFE89C 0%, #D4AF37 50%, #8A6F12 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+/* Typewriter blinking cursor */
+.typewriter-cursor::after {
+  content: '|';
+  animation: blink 1s step-end infinite;
+  color: #D4AF37;
+  margin-left: 2px;
+}
+
+@keyframes blink {
+  from, to { color: transparent }
+  50% { color: #D4AF37; }
+}
+
+/* Sepia parchment reading mode background */
+.parchment-mode {
+  background-color: #F4EBD0 !important;
+  color: #2C221E !important;
+}
+.parchment-mode .poem-text {
+  color: #3C2F2F !important;
+}
+
+/* Page transit cover */
+.page-enter {
+  opacity: 0;
+  transform: translateY(10px);
+}
+.page-enter-active {
+  opacity: 1;
+  transform: translateY(0);
+  transition: opacity 600ms cubic-bezier(0.16, 1, 0.3, 1), transform 600ms cubic-bezier(0.16, 1, 0.3, 1);
+}
