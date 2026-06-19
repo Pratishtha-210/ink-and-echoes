@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { Search, Tag, Eye, Clock, ArrowRight } from 'lucide-react';
 import api from '../utils/api.js';
+import { localEssays } from '../utils/localEssays.js';
 
 const Thoughts = () => {
   const [essays, setEssays] = useState([]);
@@ -19,7 +20,7 @@ const Thoughts = () => {
           tag: selectedTag || undefined
         }
       });
-      if (res.data && res.data.success) {
+      if (res.data && res.data.success && res.data.data.length > 0) {
         setEssays(res.data.data);
         
         // Extract all unique tags
@@ -30,12 +31,40 @@ const Thoughts = () => {
         if (availableTags.length === 0) {
           setAvailableTags([...tags]);
         }
+        setLoading(false);
+        return;
       }
     } catch (err) {
-      console.error('Error fetching essays:', err);
-    } finally {
-      setLoading(false);
+      console.warn('API connection failed. Falling back to local offline essays database.');
     }
+
+    // Client-side fallback processing
+    let list = [...localEssays];
+
+    if (selectedTag) {
+      list = list.filter(e => e.tags && e.tags.some(t => t.toLowerCase() === selectedTag.toLowerCase()));
+    }
+
+    if (search) {
+      const query = search.toLowerCase();
+      list = list.filter(e => 
+        e.title.toLowerCase().includes(query) || 
+        e.content.toLowerCase().includes(query)
+      );
+    }
+
+    setEssays(list);
+    
+    // Extract unique tags for fallback list
+    const tags = new Set();
+    localEssays.forEach(e => {
+      if (e.tags) e.tags.forEach(t => tags.add(t));
+    });
+    if (availableTags.length === 0) {
+      setAvailableTags([...tags]);
+    }
+    
+    setLoading(false);
   };
 
   useEffect(() => {

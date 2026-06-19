@@ -3,6 +3,8 @@ import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Feather, BookOpen, MessageSquare, ArrowRight, Star } from 'lucide-react';
 import api from '../utils/api.js';
+import { localPoems } from '../utils/localPoems.js';
+import { localEssays } from '../utils/localEssays.js';
 
 const Landing = () => {
   const [featuredWorks, setFeaturedWorks] = useState([]);
@@ -45,12 +47,26 @@ const Landing = () => {
           .filter(e => e.isFeatured)
           .map(e => ({ ...e, type: 'essay' }));
 
-        setFeaturedWorks([...featuredPoems, ...featuredEssays].slice(0, 3));
+        if (featuredPoems.length > 0 || featuredEssays.length > 0) {
+          setFeaturedWorks([...featuredPoems, ...featuredEssays].slice(0, 3));
+          setLoading(false);
+          return;
+        }
       } catch (err) {
-        console.error('Error fetching featured works:', err);
-      } finally {
-        setLoading(false);
+        console.warn('API error loading featured showcase. Utilizing offline files.');
       }
+
+      // Offline client fallback
+      const featuredPoems = localPoems
+        .filter(p => p.isFeatured || p.isPinned)
+        .map(p => ({ ...p, type: 'poem' }));
+        
+      const featuredEssays = localEssays
+        .filter(e => e.isFeatured)
+        .map(e => ({ ...e, type: 'essay' }));
+
+      setFeaturedWorks([...featuredPoems, ...featuredEssays].slice(0, 3));
+      setLoading(false);
     };
     fetchFeatured();
   }, []);

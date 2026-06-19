@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { Search, Eye, Heart, Calendar, ArrowRight } from 'lucide-react';
 import api from '../utils/api.js';
+import { localPoems } from '../utils/localPoems.js';
 
 const Library = () => {
   const [poems, setPoems] = useState([]);
@@ -22,14 +23,40 @@ const Library = () => {
           sort: sort
         }
       });
-      if (res.data && res.data.success) {
+      if (res.data && res.data.success && res.data.data.length > 0) {
         setPoems(res.data.data);
+        setLoading(false);
+        return;
       }
     } catch (err) {
-      console.error('Error fetching poems:', err);
-    } finally {
-      setLoading(false);
+      console.warn('API connection failed. Falling back to local offline poems database.');
     }
+
+    // Client-side fallback processing
+    let list = [...localPoems];
+
+    if (category && category !== 'All') {
+      list = list.filter(p => p.category.toLowerCase() === category.toLowerCase());
+    }
+
+    if (search) {
+      const query = search.toLowerCase();
+      list = list.filter(p => 
+        p.title.toLowerCase().includes(query) || 
+        p.content.toLowerCase().includes(query)
+      );
+    }
+
+    if (sort === 'most-viewed') {
+      list.sort((a, b) => (b.views || 0) - (a.views || 0));
+    } else if (sort === 'most-loved') {
+      list.sort((a, b) => (b.likes || 0) - (a.likes || 0));
+    } else {
+      list.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+    }
+
+    setPoems(list);
+    setLoading(false);
   };
 
   useEffect(() => {

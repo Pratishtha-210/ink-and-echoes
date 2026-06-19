@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { Eye, Heart, Share2, ArrowLeft, MessageSquare, Send, Type, Settings } from 'lucide-react';
 import api from '../utils/api.js';
+import { localPoems } from '../utils/localPoems.js';
 
 const PoemDetail = () => {
   const { id } = useParams();
@@ -31,12 +32,21 @@ const PoemDetail = () => {
         setPoem(res.data.data);
         setLikeCount(res.data.data.likes || 0);
         setComments(res.data.data.comments || []);
+        setLoading(false);
+        return;
       }
     } catch (err) {
-      console.error('Error fetching poem details:', err);
-    } finally {
-      setLoading(false);
+      console.warn('API error fetching poem details. Querying offline database.');
     }
+
+    // Client-side fallback matching
+    const localMatch = localPoems.find(p => p._id === id);
+    if (localMatch) {
+      setPoem(localMatch);
+      setLikeCount(localMatch.likes || 0);
+      setComments(localMatch.comments || []);
+    }
+    setLoading(false);
   };
 
   useEffect(() => {

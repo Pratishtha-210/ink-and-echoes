@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { Clock, Eye, Bookmark, Tag, ArrowLeft, ArrowRight, Share2 } from 'lucide-react';
 import api from '../utils/api.js';
+import { localEssays } from '../utils/localEssays.js';
 
 const EssayDetail = () => {
   const { id } = useParams();
@@ -42,12 +43,33 @@ const EssayDetail = () => {
         }
 
         setRelated(relatedList);
+        setLoading(false);
+        return;
       }
     } catch (err) {
-      console.error('Error fetching essay details:', err);
-    } finally {
-      setLoading(false);
+      console.warn('API error fetching essay details. Querying offline database.');
     }
+
+    // Client-side fallback matching
+    const localMatch = localEssays.find(e => e._id === id);
+    if (localMatch) {
+      setEssay(localMatch);
+      const bookmarks = JSON.parse(localStorage.getItem('ink_echoes_bookmarks') || '[]');
+      setIsBookmarked(bookmarks.includes(id));
+
+      const currentTags = localMatch.tags || [];
+      const relatedList = localEssays
+        .filter(e => e._id !== id && e.tags && e.tags.some(t => currentTags.includes(t)))
+        .slice(0, 2);
+
+      if (relatedList.length < 2) {
+        const leftovers = localEssays.filter(e => e._id !== id && !relatedList.some(r => r._id === e._id));
+        relatedList.push(...leftovers.slice(0, 2 - relatedList.length));
+      }
+
+      setRelated(relatedList);
+    }
+    setLoading(false);
   };
 
   useEffect(() => {

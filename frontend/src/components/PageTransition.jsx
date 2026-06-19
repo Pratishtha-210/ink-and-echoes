@@ -1,7 +1,12 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { motion } from 'framer-motion';
+import { playPageTurnSound } from '../utils/soundEffects.js';
 
 const PageTransition = ({ children }) => {
+  useEffect(() => {
+    playPageTurnSound();
+  }, []); // Play sound on page transition mount
+
   return (
     <div className="w-full relative min-h-[75vh]" style={{ perspective: '1600px' }}>
       {/* 3D Book Page Flip Animation */}
