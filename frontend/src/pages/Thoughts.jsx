@@ -22,6 +22,7 @@ const Thoughts = () => {
       });
       if (res.data && res.data.success && res.data.data.length > 0) {
         setEssays(res.data.data);
+        localStorage.setItem('local_essays', JSON.stringify(res.data.data));
         
         // Extract all unique tags
         const tags = new Set();
@@ -39,7 +40,18 @@ const Thoughts = () => {
     }
 
     // Client-side fallback processing
-    let list = [...localEssays];
+    let list = [];
+    const stored = localStorage.getItem('local_essays');
+    if (stored) {
+      try {
+        list = JSON.parse(stored);
+      } catch (e) {
+        list = [...localEssays];
+      }
+    } else {
+      list = [...localEssays];
+      localStorage.setItem('local_essays', JSON.stringify(list));
+    }
 
     if (selectedTag) {
       list = list.filter(e => e.tags && e.tags.some(t => t.toLowerCase() === selectedTag.toLowerCase()));
@@ -57,7 +69,7 @@ const Thoughts = () => {
     
     // Extract unique tags for fallback list
     const tags = new Set();
-    localEssays.forEach(e => {
+    list.forEach(e => {
       if (e.tags) e.tags.forEach(t => tags.add(t));
     });
     if (availableTags.length === 0) {

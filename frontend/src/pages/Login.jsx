@@ -148,6 +148,28 @@ const Login = () => {
               : isRegistering ? 'Create Admin Account' : 'Authenticate Session'
             }
           </button>
+
+          {!isRegistering && (
+            <button
+              type="button"
+              disabled={submitting}
+              onClick={async () => {
+                setError(null);
+                setSubmitting(true);
+                try {
+                  await login('admin@inkandechoes.com', 'adminpassword123');
+                  navigate('/journal');
+                } catch (err) {
+                  setError(err.message || 'Authentication failed.');
+                } finally {
+                  setSubmitting(false);
+                }
+              }}
+              className="w-full py-2.5 bg-transparent border border-luxury-gold/30 hover:border-luxury-gold hover:bg-luxury-gold/5 text-luxury-gold hover:text-white rounded-xl text-xs font-semibold uppercase tracking-wider transition-all duration-300 flex items-center justify-center gap-1.5 cursor-pointer"
+            >
+              <Shield size={13} /> Demo Admin Bypass
+            </button>
+          )}
         </form>
 
         {/* Seed Info Box (Convenience check) */}

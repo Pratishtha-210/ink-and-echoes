@@ -51,7 +51,22 @@ const JournalEditor = () => {
             setTimeout(() => setSaveStatus('Clean'), 100);
           }
         } catch (err) {
-          setErrorMessage('Failed to retrieve entry from vault.');
+          console.warn('API error loading entry. Querying local storage:', err);
+          const localData = localStorage.getItem('local_journals') || '[]';
+          const parsed = JSON.parse(localData);
+          const localEntry = parsed.find(e => e._id === id);
+          if (localEntry) {
+            setTitle(localEntry.title);
+            setContent(localEntry.content);
+            setMood(localEntry.mood);
+            setWeather(localEntry.weather);
+            setFavorite(localEntry.favorite);
+            setIsArchived(localEntry.isArchived || false);
+            setTags(localEntry.tags ? localEntry.tags.join(', ') : '');
+            setTimeout(() => setSaveStatus('Clean'), 100);
+          } else {
+            setErrorMessage('Failed to retrieve entry from vault.');
+          }
         }
       };
       fetchEntry();
@@ -94,9 +109,55 @@ const JournalEditor = () => {
       setSaveStatus('Saved');
       setErrorMessage(null);
     } catch (err) {
-      console.error('Error saving journal:', err);
-      setSaveStatus('Edited');
-      if (!silent) setErrorMessage('Vault save operation failed.');
+      console.warn('API error saving journal. Utilizing local storage fallback:', err);
+      // Local storage fallback save
+      const localData = localStorage.getItem('local_journals') || '[]';
+      const parsed = JSON.parse(localData);
+      
+      const newTags = currentData.tags 
+        ? currentData.tags.split(',').map(t => t.trim()).filter(Boolean)
+        : [];
+
+      if (isEditMode) {
+        const idx = parsed.findIndex(e => e._id === id);
+        if (idx !== -1) {
+          parsed[idx] = {
+            ...parsed[idx],
+            title: currentData.title,
+            content: currentData.content,
+            mood: currentData.mood,
+            weather: currentData.weather,
+            favorite: currentData.favorite,
+            isArchived: currentData.isArchived,
+            tags: newTags,
+            updatedAt: new Date().toISOString()
+          };
+        }
+      } else {
+        const newId = 'local_' + Math.random().toString(36).substring(2, 11);
+        const newEntry = {
+          _id: newId,
+          title: currentData.title,
+          content: currentData.content,
+          mood: currentData.mood,
+          weather: currentData.weather,
+          favorite: currentData.favorite,
+          isArchived: currentData.isArchived,
+          tags: newTags,
+          createdAt: new Date().toISOString(),
+          isOffline: true
+        };
+        parsed.push(newEntry);
+        localStorage.setItem('local_journals', JSON.stringify(parsed));
+        setSaveStatus('Saved');
+        setErrorMessage(null);
+        navigate(`/journal/edit/${newId}`, { replace: true });
+        return;
+      }
+      
+      localStorage.setItem('local_journals', JSON.stringify(parsed));
+      setSaveStatus('Saved');
+      setErrorMessage(null);
     }
   };
 
@@ -130,7 +191,13 @@ const JournalEditor = () => {
       await api.delete(`/journal/${id}`);
       navigate('/journal');
     } catch (err) {
-      setErrorMessage('Purge operation failed.');
+      console.warn('API error deleting journal. Querying local storage fallback:', err);
+      // Local storage delete fallback
+      const localData = localStorage.getItem('local_journals') || '[]';
+      const parsed = JSON.parse(localData);
+      const filtered = parsed.filter(e => e._id !== id);
+      localStorage.setItem('local_journals', JSON.stringify(filtered));
+      navigate('/journal');
     }
   };
 

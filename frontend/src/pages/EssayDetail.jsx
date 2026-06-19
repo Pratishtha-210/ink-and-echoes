@@ -51,19 +51,30 @@ const EssayDetail = () => {
     }
 
     // Client-side fallback matching
-    const localMatch = localEssays.find(e => e._id === id);
+    let list = [];
+    const stored = localStorage.getItem('local_essays');
+    if (stored) {
+      try {
+        list = JSON.parse(stored);
+      } catch (e) {
+        list = [...localEssays];
+      }
+    } else {
+      list = [...localEssays];
+    }
+    const localMatch = list.find(e => e._id === id);
     if (localMatch) {
       setEssay(localMatch);
       const bookmarks = JSON.parse(localStorage.getItem('ink_echoes_bookmarks') || '[]');
       setIsBookmarked(bookmarks.includes(id));
 
       const currentTags = localMatch.tags || [];
-      const relatedList = localEssays
+      const relatedList = list
         .filter(e => e._id !== id && e.tags && e.tags.some(t => currentTags.includes(t)))
         .slice(0, 2);
 
       if (relatedList.length < 2) {
-        const leftovers = localEssays.filter(e => e._id !== id && !relatedList.some(r => r._id === e._id));
+        const leftovers = list.filter(e => e._id !== id && !relatedList.some(r => r._id === e._id));
         relatedList.push(...leftovers.slice(0, 2 - relatedList.length));
       }
 

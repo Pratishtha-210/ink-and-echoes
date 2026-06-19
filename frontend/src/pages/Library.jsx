@@ -25,6 +25,7 @@ const Library = () => {
       });
       if (res.data && res.data.success && res.data.data.length > 0) {
         setPoems(res.data.data);
+        localStorage.setItem('local_poems', JSON.stringify(res.data.data));
         setLoading(false);
         return;
       }
@@ -33,7 +34,18 @@ const Library = () => {
     }
 
     // Client-side fallback processing
-    let list = [...localPoems];
+    let list = [];
+    const stored = localStorage.getItem('local_poems');
+    if (stored) {
+      try {
+        list = JSON.parse(stored);
+      } catch (e) {
+        list = [...localPoems];
+      }
+    } else {
+      list = [...localPoems];
+      localStorage.setItem('local_poems', JSON.stringify(list));
+    }
 
     if (category && category !== 'All') {
       list = list.filter(p => p.category.toLowerCase() === category.toLowerCase());

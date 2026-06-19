@@ -40,7 +40,18 @@ const PoemDetail = () => {
     }
 
     // Client-side fallback matching
-    const localMatch = localPoems.find(p => p._id === id);
+    let list = [];
+    const stored = localStorage.getItem('local_poems');
+    if (stored) {
+      try {
+        list = JSON.parse(stored);
+      } catch (e) {
+        list = [...localPoems];
+      }
+    } else {
+      list = [...localPoems];
+    }
+    const localMatch = list.find(p => p._id === id);
     if (localMatch) {
       setPoem(localMatch);
       setLikeCount(localMatch.likes || 0);
@@ -62,7 +73,26 @@ const PoemDetail = () => {
         setLiked(true);
       }
     } catch (err) {
-      console.error('Error liking poem:', err);
+      console.warn('Like API call failed. Liking poem locally (offline)...');
+      let list = [];
+      const stored = localStorage.getItem('local_poems');
+      if (stored) {
+        list = JSON.parse(stored);
+      } else {
+        list = [...localPoems];
+      }
+
+      list = list.map(p => {
+        if (p._id === id) {
+          const newLikes = (p.likes || 0) + 1;
+          setLikeCount(newLikes);
+          return { ...p, likes: newLikes };
+        }
+        return p;
+      });
+
+      localStorage.setItem('local_poems', JSON.stringify(list));
+      setLiked(true);
     }
   };
 
@@ -81,7 +111,34 @@ const PoemDetail = () => {
         setCommentContent('');
       }
     } catch (err) {
-      console.error('Error submitting comment:', err);
+      console.warn('Comment API call failed. Saving comment locally (offline)...');
+      let list = [];
+      const stored = localStorage.getItem('local_poems');
+      if (stored) {
+        list = JSON.parse(stored);
+      } else {
+        list = [...localPoems];
+      }
+
+      const newComment = {
+        _id: `comment_${Date.now()}`,
+        name: commentName,
+        content: commentContent,
+        createdAt: new Date().toISOString()
+      };
+
+      list = list.map(p => {
+        if (p._id === id) {
+          const updatedComments = [newComment, ...(p.comments || [])];
+          setComments(updatedComments);
+          return { ...p, comments: updatedComments };
+        }
+        return p;
+      });
+
+      localStorage.setItem('local_poems', JSON.stringify(list));
+      setCommentName('');
+      setCommentContent('');
     }
   };
 

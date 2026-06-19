@@ -14,6 +14,76 @@ const JournalDashboard = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [filterMood, setFilterMood] = useState('');
 
+  const calculateLocalAnalytics = (entriesList) => {
+    const moodCounts = {
+      serene: 0, melancholic: 0, inspired: 0, reflective: 0, turbulent: 0, neutral: 0
+    };
+    entriesList.forEach(e => {
+      if (moodCounts[e.mood] !== undefined) {
+        moodCounts[e.mood]++;
+      } else {
+        moodCounts.neutral++;
+      }
+    });
+
+    let currentStreak = 0;
+    const uniqueDates = [...new Set(entriesList.map(e => {
+      const d = new Date(e.createdAt);
+      return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+    }))].sort((a, b) => new Date(b) - new Date(a));
+
+    const todayStr = new Date().toISOString().split('T')[0];
+    const yesterday = new Date();
+    yesterday.setDate(yesterday.getDate() - 1);
+    const yesterdayStr = yesterday.toISOString().split('T')[0];
+
+    if (uniqueDates.includes(todayStr) || uniqueDates.includes(yesterdayStr)) {
+      currentStreak = 0;
+      let checkDate = new Date();
+      if (!uniqueDates.includes(todayStr)) {
+        checkDate = yesterday;
+      }
+      while (true) {
+        const checkStr = checkDate.toISOString().split('T')[0];
+        if (uniqueDates.includes(checkStr)) {
+          currentStreak++;
+          checkDate.setDate(checkDate.getDate() - 1);
+        } else {
+          break;
+        }
+      }
+    }
+
+    let totalWords = 0;
+    entriesList.forEach(e => {
+      const words = e.content ? e.content.toLowerCase().match(/\b\w+\b/g) : null;
+      if (words) {
+        totalWords += words.length;
+      }
+    });
+
+    let reflectionText = "Your journal is a quiet sanctuary. Begin writing your daily reflections to see your emotional resonance develop over time.";
+    if (entriesList.length > 0) {
+      if (moodCounts.inspired > moodCounts.melancholic) {
+        reflectionText = "A creative spark resides in your recent writings. The whispers of inspiration are guiding your thoughts towards growth.";
+      } else if (moodCounts.melancholic > moodCounts.serene) {
+        reflectionText = "A beautiful melancholy laces your reflections. Writing is the silent bridge between sorrow and healing.";
+      } else {
+        reflectionText = "Your thoughts show a calm, reflective balance. Stride forward quietly, preserving your peaceful sanctuary.";
+      }
+    }
+
+    return {
+      stats: {
+        totalEntries: entriesList.length,
+        moodCounts,
+        currentStreak,
+        totalWords
+      },
+      reflection: reflectionText
+    };
+  };
+
   const fetchJournalData = async () => {
     try {
       setLoading(true);
@@ -30,8 +100,14 @@ const JournalDashboard = () => {
         setReflection(statsRes.data.reflection);
       }
     } catch (err) {
-      console.error('Failed to load private journal:', err);
-      // Unauthorized, usually handled by route interceptor but double check here
+      console.warn('Failed to load private journal from backend. Querying local storage fallback.');
+      const localData = localStorage.getItem('local_journals') || '[]';
+      const parsedEntries = JSON.parse(localData);
+      setEntries(parsedEntries);
+
+      const localStats = calculateLocalAnalytics(parsedEntries);
+      setAnalytics(localStats.stats);
+      setReflection(localStats.reflection);
     } finally {
       setLoading(false);
     }

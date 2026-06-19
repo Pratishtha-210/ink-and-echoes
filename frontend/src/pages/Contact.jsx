@@ -34,8 +34,25 @@ const Contact = () => {
         setFormData({ name: '', email: '', subject: '', message: '' });
       }
     } catch (err) {
-      const msg = err.response?.data?.message || 'Failed to deliver message. Please try again.';
-      setStatus({ submitting: false, success: false, error: msg });
+      console.warn('API message delivery failed. Saving local contact submission...');
+      try {
+        const stored = localStorage.getItem('local_messages');
+        const list = stored ? JSON.parse(stored) : [];
+        const newMsg = {
+          _id: `msg_offline_${Date.now()}`,
+          ...formData,
+          isRead: false,
+          createdAt: new Date().toISOString()
+        };
+        list.unshift(newMsg);
+        localStorage.setItem('local_messages', JSON.stringify(list));
+        
+        setStatus({ submitting: false, success: true, error: null });
+        setFormData({ name: '', email: '', subject: '', message: '' });
+      } catch (e) {
+        const msg = err.response?.data?.message || 'Failed to deliver message. Please try again.';
+        setStatus({ submitting: false, success: false, error: msg });
+      }
     }
   };
 

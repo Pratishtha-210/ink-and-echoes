@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { BookOpen, Feather, Mail, LayoutDashboard, Plus, Trash2, Eye, Heart, Check, Archive, X, PenTool } from 'lucide-react';
 import api from '../utils/api.js';
+import { localPoems } from '../utils/localPoems.js';
+import { localEssays } from '../utils/localEssays.js';
 
 const AdminDashboard = () => {
   const [activeTab, setActiveTab] = useState('overview'); // overview, poems, essays, messages
@@ -33,11 +35,58 @@ const AdminDashboard = () => {
         api.get('/contact')
       ]);
 
-      if (poemsRes.data?.success) setPoems(poemsRes.data.data);
-      if (essaysRes.data?.success) setEssays(essaysRes.data.data);
-      if (messagesRes.data?.success) setMessages(messagesRes.data.data);
+      if (poemsRes.data?.success) {
+        setPoems(poemsRes.data.data);
+        localStorage.setItem('local_poems', JSON.stringify(poemsRes.data.data));
+      }
+      if (essaysRes.data?.success) {
+        setEssays(essaysRes.data.data);
+        localStorage.setItem('local_essays', JSON.stringify(essaysRes.data.data));
+      }
+      if (messagesRes.data?.success) {
+        setMessages(messagesRes.data.data);
+        localStorage.setItem('local_messages', JSON.stringify(messagesRes.data.data));
+      }
     } catch (err) {
-      setActionStatus({ success: null, error: 'Failed to retrieve administrative records.' });
+      console.warn('Admin: Failed to retrieve records from backend. Querying local storage fallback.');
+      
+      // Load poems
+      let localP = localStorage.getItem('local_poems');
+      if (localP) {
+        setPoems(JSON.parse(localP));
+      } else {
+        setPoems(localPoems);
+        localStorage.setItem('local_poems', JSON.stringify(localPoems));
+      }
+
+      // Load essays
+      let localE = localStorage.getItem('local_essays');
+      if (localE) {
+        setEssays(JSON.parse(localE));
+      } else {
+        setEssays(localEssays);
+        localStorage.setItem('local_essays', JSON.stringify(localEssays));
+      }
+
+      // Load messages
+      let localM = localStorage.getItem('local_messages');
+      if (localM) {
+        setMessages(JSON.parse(localM));
+      } else {
+        const initialMessages = [
+          {
+            _id: 'msg_1',
+            name: 'Charlotte Brontë',
+            email: 'charlotte@classicauthors.org',
+            subject: 'Inquiry on Collaboration',
+            message: 'I have read your poetry collection and found it deeply resonances with the dark moorlands. Would you be open to a collaborative collection?',
+            isRead: false,
+            createdAt: new Date().toISOString()
+          }
+        ];
+        setMessages(initialMessages);
+        localStorage.setItem('local_messages', JSON.stringify(initialMessages));
+      }
     } finally {
       setLoading(false);
     }
@@ -69,7 +118,35 @@ const AdminDashboard = () => {
       setEditingPoem(null);
       fetchData();
     } catch (err) {
-      triggerStatus('error', 'Poem write operation failed.');
+      console.warn('Poem write operation to API failed. Writing to local storage...');
+      let list = [];
+      const stored = localStorage.getItem('local_poems');
+      if (stored) {
+        list = JSON.parse(stored);
+      } else {
+        list = [...localPoems];
+      }
+
+      if (editingPoem) {
+        list = list.map(p => p._id === editingPoem._id ? { ...p, ...poemData } : p);
+        triggerStatus('success', 'Poem updated locally (offline).');
+      } else {
+        const newPoem = {
+          ...poemData,
+          _id: `poem_${Date.now()}`,
+          views: 0,
+          likes: 0,
+          comments: [],
+          createdAt: new Date().toISOString()
+        };
+        list.unshift(newPoem);
+        triggerStatus('success', 'New poem cataloged locally (offline).');
+      }
+      localStorage.setItem('local_poems', JSON.stringify(list));
+      setPoems(list);
+      setPoemData({ title: '', category: 'Life', content: '', isFeatured: false, isPinned: false });
+      setShowPoemForm(false);
+      setEditingPoem(null);
     }
   };
 
@@ -92,7 +169,19 @@ const AdminDashboard = () => {
       triggerStatus('success', 'Poem purged.');
       fetchData();
     } catch (err) {
-      triggerStatus('error', 'Purge failed.');
+      console.warn('Poem delete operation to API failed. Purging from local storage...');
+      let list = [];
+      const stored = localStorage.getItem('local_poems');
+      if (stored) {
+        list = JSON.parse(stored);
+      } else {
+        list = [...localPoems];
+      }
+
+      list = list.filter(p => p._id !== poemId);
+      localStorage.setItem('local_poems', JSON.stringify(list));
+      setPoems(list);
+      triggerStatus('success', 'Poem purged locally (offline).');
     }
   };
 
@@ -113,7 +202,37 @@ const AdminDashboard = () => {
       setEditingEssay(null);
       fetchData();
     } catch (err) {
-      triggerStatus('error', 'Essay write operation failed.');
+      console.warn('Essay write operation to API failed. Writing to local storage...');
+      let list = [];
+      const stored = localStorage.getItem('local_essays');
+      if (stored) {
+        list = JSON.parse(stored);
+      } else {
+        list = [...localEssays];
+      }
+
+      const parsedTags = essayData.tags ? essayData.tags.split(',').map(t => t.trim()) : [];
+
+      if (editingEssay) {
+        list = list.map(e => e._id === editingEssay._id ? { ...e, ...essayData, tags: parsedTags } : e);
+        triggerStatus('success', 'Essay updated locally (offline).');
+      } else {
+        const newEssay = {
+          ...essayData,
+          tags: parsedTags,
+          _id: `essay_${Date.now()}`,
+          views: 0,
+          readingTime: Math.max(1, Math.round(essayData.content.split(/\s+/).length / 200)),
+          createdAt: new Date().toISOString()
+        };
+        list.unshift(newEssay);
+        triggerStatus('success', 'New essay published locally (offline).');
+      }
+      localStorage.setItem('local_essays', JSON.stringify(list));
+      setEssays(list);
+      setEssayData({ title: '', content: '', tags: '', isFeatured: false });
+      setShowEssayForm(false);
+      setEditingEssay(null);
     }
   };
 
@@ -135,7 +254,19 @@ const AdminDashboard = () => {
       triggerStatus('success', 'Essay purged.');
       fetchData();
     } catch (err) {
-      triggerStatus('error', 'Purge failed.');
+      console.warn('Essay delete operation to API failed. Purging from local storage...');
+      let list = [];
+      const stored = localStorage.getItem('local_essays');
+      if (stored) {
+        list = JSON.parse(stored);
+      } else {
+        list = [...localEssays];
+      }
+
+      list = list.filter(e => e._id !== essayId);
+      localStorage.setItem('local_essays', JSON.stringify(list));
+      setEssays(list);
+      triggerStatus('success', 'Essay purged locally (offline).');
     }
   };
 
@@ -146,7 +277,10 @@ const AdminDashboard = () => {
       await api.patch(`/contact/${msgId}/read`);
       fetchData();
     } catch (err) {
-      triggerStatus('error', 'Update failed.');
+      console.warn('Message read state update to API failed. Updating local storage...');
+      let list = messages.map(m => m._id === msgId ? { ...m, isRead: !m.isRead } : m);
+      localStorage.setItem('local_messages', JSON.stringify(list));
+      setMessages(list);
     }
   };
 
@@ -157,7 +291,11 @@ const AdminDashboard = () => {
       triggerStatus('success', 'Message cleared.');
       fetchData();
     } catch (err) {
-      triggerStatus('error', 'Purge failed.');
+      console.warn('Message delete operation to API failed. Purging from local storage...');
+      let list = messages.filter(m => m._id !== msgId);
+      localStorage.setItem('local_messages', JSON.stringify(list));
+      setMessages(list);
+      triggerStatus('success', 'Message cleared locally (offline).');
     }
   };
 

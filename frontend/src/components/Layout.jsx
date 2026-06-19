@@ -5,6 +5,7 @@ import Particles from './Particles.jsx';
 import CursorGlow from './CursorGlow.jsx';
 import MusicPlayer from './MusicPlayer.jsx';
 import { Feather, Shield, PenTool, LogOut } from 'lucide-react';
+import { playPageTurnSound } from '../utils/soundEffects.js';
 
 const Layout = ({ children }) => {
   const { user, logout } = useAuth();
@@ -20,7 +21,7 @@ const Layout = ({ children }) => {
       {/* Global Luxury Header */}
       <header className="sticky top-0 z-40 bg-luxury-bg/70 backdrop-blur-md border-b border-luxury-border/40 transition-all duration-300">
         <div className="max-w-7xl mx-auto px-6 h-20 flex items-center justify-between">
-          <Link to="/" className="flex items-center gap-2 group">
+          <Link to="/" className="flex items-center gap-2 group animate-duration-300" onClick={playPageTurnSound}>
             <Feather className="text-luxury-gold group-hover:rotate-12 transition-transform duration-300" size={22} />
             <span className="font-serif text-xl tracking-wider font-semibold group-hover:text-luxury-gold transition-colors duration-300">
               Ink & Echoes
@@ -30,30 +31,35 @@ const Layout = ({ children }) => {
           <nav className="hidden md:flex items-center gap-8 text-sm font-medium tracking-widest uppercase">
             <NavLink 
               to="/" 
+              onClick={playPageTurnSound}
               className={({ isActive }) => `hover:text-luxury-gold transition-colors duration-300 ${isActive ? 'text-luxury-gold border-b border-luxury-gold/50 pb-1' : 'text-luxury-muted'}`}
             >
               Home
             </NavLink>
             <NavLink 
               to="/library" 
+              onClick={playPageTurnSound}
               className={({ isActive }) => `hover:text-luxury-gold transition-colors duration-300 ${isActive ? 'text-luxury-gold border-b border-luxury-gold/50 pb-1' : 'text-luxury-muted'}`}
             >
               Poems
             </NavLink>
             <NavLink 
               to="/thoughts" 
+              onClick={playPageTurnSound}
               className={({ isActive }) => `hover:text-luxury-gold transition-colors duration-300 ${isActive ? 'text-luxury-gold border-b border-luxury-gold/50 pb-1' : 'text-luxury-muted'}`}
             >
               Thoughts
             </NavLink>
             <NavLink 
               to="/about" 
+              onClick={playPageTurnSound}
               className={({ isActive }) => `hover:text-luxury-gold transition-colors duration-300 ${isActive ? 'text-luxury-gold border-b border-luxury-gold/50 pb-1' : 'text-luxury-muted'}`}
             >
               About
             </NavLink>
             <NavLink 
               to="/contact" 
+              onClick={playPageTurnSound}
               className={({ isActive }) => `hover:text-luxury-gold transition-colors duration-300 ${isActive ? 'text-luxury-gold border-b border-luxury-gold/50 pb-1' : 'text-luxury-muted'}`}
             >
               Contact
@@ -64,12 +70,14 @@ const Layout = ({ children }) => {
               <>
                 <NavLink 
                   to="/journal" 
+                  onClick={playPageTurnSound}
                   className={({ isActive }) => `flex items-center gap-1.5 hover:text-luxury-gold transition-colors duration-300 ${isActive ? 'text-luxury-gold border-b border-luxury-gold/50 pb-1' : 'text-luxury-muted'}`}
                 >
                   <PenTool size={14} /> Journal
                 </NavLink>
                 <NavLink 
                   to="/admin" 
+                  onClick={playPageTurnSound}
                   className={({ isActive }) => `flex items-center gap-1.5 hover:text-luxury-gold transition-colors duration-300 ${isActive ? 'text-luxury-gold border-b border-luxury-gold/50 pb-1' : 'text-luxury-muted'}`}
                 >
                   <Shield size={14} /> Admin
@@ -81,15 +89,19 @@ const Layout = ({ children }) => {
           <div className="flex items-center gap-4">
             {user ? (
               <button 
-                onClick={logout} 
-                className="flex items-center gap-1 px-4 py-2 border border-red-950/40 bg-red-950/10 text-red-400 hover:bg-red-950/30 hover:border-red-500/50 rounded-full text-xs font-semibold uppercase tracking-wider transition-all duration-300"
+                onClick={() => {
+                  playPageTurnSound();
+                  logout();
+                }} 
+                className="flex items-center gap-1 px-4 py-2 border border-red-950/40 bg-red-950/10 text-red-400 hover:bg-red-950/30 hover:border-red-500/50 rounded-full text-xs font-semibold uppercase tracking-wider transition-all duration-300 cursor-pointer"
               >
                 <LogOut size={12} /> Logout
               </button>
             ) : (
               <Link 
                 to="/login" 
-                className="px-4 py-2 border border-luxury-gold/20 hover:border-luxury-gold/80 bg-luxury-card hover:bg-luxury-gold hover:text-black rounded-full text-xs font-semibold uppercase tracking-wider transition-all duration-300"
+                onClick={playPageTurnSound}
+                className="px-4 py-2 border border-luxury-gold/20 hover:border-luxury-gold/80 bg-luxury-card hover:bg-luxury-gold hover:text-black rounded-full text-xs font-semibold uppercase tracking-wider transition-all duration-300 cursor-pointer"
               >
                 Gate
               </Link>
@@ -111,10 +123,10 @@ const Layout = ({ children }) => {
             <p className="mt-1 text-xs">© {new Date().getFullYear()} Ink & Echoes. All Rights Reserved.</p>
           </div>
           <div className="flex gap-6 text-xs uppercase tracking-widest">
-            <Link to="/" className="hover:text-luxury-gold transition-colors duration-300">Home</Link>
-            <Link to="/library" className="hover:text-luxury-gold transition-colors duration-300">Library</Link>
-            <Link to="/contact" className="hover:text-luxury-gold transition-colors duration-300">Contact</Link>
-            <Link to="/login" className="hover:text-luxury-gold transition-colors duration-300">Portal</Link>
+            <Link to="/" onClick={playPageTurnSound} className="hover:text-luxury-gold transition-colors duration-300">Home</Link>
+            <Link to="/library" onClick={playPageTurnSound} className="hover:text-luxury-gold transition-colors duration-300">Library</Link>
+            <Link to="/contact" onClick={playPageTurnSound} className="hover:text-luxury-gold transition-colors duration-300">Contact</Link>
+            <Link to="/login" onClick={playPageTurnSound} className="hover:text-luxury-gold transition-colors duration-300">Portal</Link>
           </div>
         </div>
       </footer>
