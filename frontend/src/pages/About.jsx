@@ -1,6 +1,7 @@
 import React from 'react';
 import { motion } from 'framer-motion';
 import { Feather, Award, Calendar, BookOpen, Star } from 'lucide-react';
+import profileImg from '../assets/profile.jpg';
 
 const About = () => {
   const milestones = [
@@ -39,15 +40,16 @@ const About = () => {
           <div className="relative group rounded-3xl overflow-hidden border border-luxury-gold/20 shadow-gold-glow max-w-sm mx-auto">
             {/* Dark monochrome filter to represent the figma design layout */}
             <div className="aspect-[4/5] bg-neutral-900 flex flex-col justify-end p-8 relative">
-              <div className="absolute inset-0 bg-gradient-to-t from-black via-black/40 to-transparent z-10"></div>
+              {/* Profile Image with luxury filters */}
+              <img 
+                src={profileImg} 
+                alt="Pratishtha Sharma" 
+                className="absolute inset-0 w-full h-full object-cover filter grayscale contrast-125 brightness-75 group-hover:grayscale-0 group-hover:brightness-90 transition-all duration-700 pointer-events-none" 
+              />
+              <div className="absolute inset-0 bg-gradient-to-t from-black via-black/30 to-transparent z-10"></div>
               {/* Golden line element */}
-              <div className="absolute top-6 left-6 w-12 h-[1px] bg-luxury-gold"></div>
-              <div className="absolute top-6 left-6 w-[1px] h-12 bg-luxury-gold"></div>
-              
-              {/* Graphic placeholder */}
-              <div className="absolute inset-0 flex items-center justify-center text-luxury-border">
-                <Feather size={120} className="opacity-15" />
-              </div>
+              <div className="absolute top-6 left-6 w-12 h-[1px] bg-luxury-gold z-20"></div>
+              <div className="absolute top-6 left-6 w-[1px] h-12 bg-luxury-gold z-20"></div>
 
               <div className="z-20 space-y-2">
                 <h3 className="font-serif text-2xl font-bold tracking-wide">Pratishtha Sharma</h3>
