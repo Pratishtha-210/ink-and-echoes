@@ -52,37 +52,46 @@ const OpenDiary = () => {
     }
   ];
 
-  const fetchReflections = async () => {
+  const fetchReflections = async (isPolling = false) => {
     try {
-      setLoading(true);
+      if (!isPolling) setLoading(true);
       const res = await api.get('/open-diary');
       if (res.data && res.data.success) {
         setReflections(res.data.data);
         localStorage.setItem('local_open_diary', JSON.stringify(res.data.data));
-        setLoading(false);
+        if (!isPolling) setLoading(false);
         return;
       }
     } catch (err) {
       console.warn('API error loading open diary entries. Querying localStorage fallback...');
     }
 
-    // Offline localStorage fallback
-    const stored = localStorage.getItem('local_open_diary');
-    if (stored) {
-      try {
-        setReflections(JSON.parse(stored));
-      } catch (e) {
+    // Offline localStorage fallback (only trigger if not polling, to avoid resetting UI state)
+    if (!isPolling) {
+      const stored = localStorage.getItem('local_open_diary');
+      if (stored) {
+        try {
+          setReflections(JSON.parse(stored));
+        } catch (e) {
+          setReflections(initialOfflineSeeds);
+        }
+      } else {
         setReflections(initialOfflineSeeds);
+        localStorage.setItem('local_open_diary', JSON.stringify(initialOfflineSeeds));
       }
-    } else {
-      setReflections(initialOfflineSeeds);
-      localStorage.setItem('local_open_diary', JSON.stringify(initialOfflineSeeds));
+      setLoading(false);
     }
-    setLoading(false);
   };
 
   useEffect(() => {
-    fetchReflections();
+    fetchReflections(false);
+
+    // Setup polling interval for real-time updates (every 5 seconds)
+    const interval = setInterval(() => {
+      fetchReflections(true);
+    }, 5000);
+
+    return () => clearInterval(interval);
   }, []);
 
   const handleInputChange = (e) => {
