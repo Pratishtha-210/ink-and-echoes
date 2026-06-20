@@ -85,10 +85,10 @@ const OpenDiary = () => {
         }
       }
 
-      // 2. Try Shared Cloud Database (KVDB) if not flagged as offline-only
+      // 2. Try Shared Cloud Database (ExtendsClass) if not flagged as offline-only
       if (dbStatusRef.current !== 'offline') {
         try {
-          const cloudRes = await axios.get('https://kvdb.io/FS13hStgD5SZR9MQZj2wza/open_diary', { timeout: 3000 });
+          const cloudRes = await axios.get('https://extendsclass.com/api/json-storage/bin/edcfdda', { timeout: 3000 });
           if (cloudRes.data && Array.isArray(cloudRes.data)) {
             setReflections(cloudRes.data);
             localStorage.setItem('local_open_diary', JSON.stringify(cloudRes.data));
@@ -98,10 +98,10 @@ const OpenDiary = () => {
           }
         } catch (cloudErr) {
           if (cloudErr.response?.status === 404) {
-            // Uninitialized key on KVDB, initialize it with seed data
+            // Uninitialized key on Cloud DB, initialize it with seed data
             console.log('Shared cloud database is empty. Initializing...');
             try {
-              await axios.post('https://kvdb.io/FS13hStgD5SZR9MQZj2wza/open_diary', initialOfflineSeeds, { timeout: 3000 });
+              await axios.put('https://extendsclass.com/api/json-storage/bin/edcfdda', initialOfflineSeeds, { timeout: 3000 });
               setReflections(initialOfflineSeeds);
               localStorage.setItem('local_open_diary', JSON.stringify(initialOfflineSeeds));
               updateDbStatus('cloud');
@@ -195,11 +195,11 @@ const OpenDiary = () => {
       }
     }
 
-    // 2. Try to submit to shared cloud database (KVDB)
+    // 2. Try to submit to shared cloud database (ExtendsClass)
     try {
       let currentList = [];
       try {
-        const cloudRes = await axios.get('https://kvdb.io/FS13hStgD5SZR9MQZj2wza/open_diary', { timeout: 3000 });
+        const cloudRes = await axios.get('https://extendsclass.com/api/json-storage/bin/edcfdda', { timeout: 3000 });
         if (cloudRes.data && Array.isArray(cloudRes.data)) {
           currentList = cloudRes.data;
         } else {
@@ -211,7 +211,7 @@ const OpenDiary = () => {
       }
 
       const updatedList = [newEntry, ...currentList];
-      await axios.post('https://kvdb.io/FS13hStgD5SZR9MQZj2wza/open_diary', updatedList, { timeout: 3500 });
+      await axios.put('https://extendsclass.com/api/json-storage/bin/edcfdda', updatedList, { timeout: 3500 });
       
       localStorage.setItem('local_open_diary', JSON.stringify(updatedList));
       setReflections(updatedList);
