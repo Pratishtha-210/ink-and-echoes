@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { PenTool, MessageSquare, Feather, Smile, Clock, Sparkles, X, Heart, AlertCircle, Check } from 'lucide-react';
 import api from '../utils/api.js';
@@ -11,6 +11,15 @@ const OpenDiary = () => {
   const [showForm, setShowForm] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   
+  // Connection status state & ref (to prevent stale closures in setInterval)
+  const [dbStatus, setDbStatus] = useState('connecting'); // 'connecting' | 'backend' | 'cloud' | 'offline'
+  const dbStatusRef = useRef('connecting');
+
+  const updateDbStatus = (status) => {
+    dbStatusRef.current = status;
+    setDbStatus(status);
+  };
+
   // Form states
   const [formData, setFormData] = useState({
     name: '',
@@ -57,59 +66,72 @@ const OpenDiary = () => {
     try {
       if (!isPolling) setLoading(true);
       
-      // Try backend API first
-      try {
-        const res = await api.get('/open-diary');
-        if (res.data && res.data.success) {
-          setReflections(res.data.data);
-          localStorage.setItem('local_open_diary', JSON.stringify(res.data.data));
-          if (!isPolling) setLoading(false);
-          return;
+      const currentStatus = dbStatusRef.current;
+
+      // 1. Try Backend API first if not already flagged as cloud/offline
+      if (currentStatus === 'connecting' || currentStatus === 'backend') {
+        try {
+          const res = await api.get('/open-diary', { timeout: 1500 });
+          if (res.data && res.data.success) {
+            setReflections(res.data.data);
+            localStorage.setItem('local_open_diary', JSON.stringify(res.data.data));
+            updateDbStatus('backend');
+            if (!isPolling) setLoading(false);
+            return;
+          }
+        } catch (backendErr) {
+          console.warn('Backend API unreachable or timed out. Transitioning to Cloud DB...');
+          // Proceed to cloud DB immediately
         }
-      } catch (backendErr) {
-        console.warn('Backend API unreachable. Trying shared cloud database...');
       }
 
-      // Fallback to shared cloud database (KVDB)
-      try {
-        const cloudRes = await axios.get('https://kvdb.io/FS13hStgD5SZR9MQZj2wza/open_diary');
-        if (cloudRes.data && Array.isArray(cloudRes.data)) {
-          setReflections(cloudRes.data);
-          localStorage.setItem('local_open_diary', JSON.stringify(cloudRes.data));
-          if (!isPolling) setLoading(false);
-          return;
+      // 2. Try Shared Cloud Database (KVDB) if not flagged as offline-only
+      if (dbStatusRef.current !== 'offline') {
+        try {
+          const cloudRes = await axios.get('https://kvdb.io/FS13hStgD5SZR9MQZj2wza/open_diary', { timeout: 3000 });
+          if (cloudRes.data && Array.isArray(cloudRes.data)) {
+            setReflections(cloudRes.data);
+            localStorage.setItem('local_open_diary', JSON.stringify(cloudRes.data));
+            updateDbStatus('cloud');
+            if (!isPolling) setLoading(false);
+            return;
+          }
+        } catch (cloudErr) {
+          if (cloudErr.response?.status === 404) {
+            // Uninitialized key on KVDB, initialize it with seed data
+            console.log('Shared cloud database is empty. Initializing...');
+            try {
+              await axios.post('https://kvdb.io/FS13hStgD5SZR9MQZj2wza/open_diary', initialOfflineSeeds, { timeout: 3000 });
+              setReflections(initialOfflineSeeds);
+              localStorage.setItem('local_open_diary', JSON.stringify(initialOfflineSeeds));
+              updateDbStatus('cloud');
+              if (!isPolling) setLoading(false);
+              return;
+            } catch (initErr) {
+              console.error('Failed to initialize Cloud DB:', initErr);
+            }
+          }
+          console.warn('Cloud DB unreachable or timed out. Transitioning to Offline local mode...');
         }
-      } catch (cloudErr) {
-        if (cloudErr.response?.status === 404) {
-          // Uninitialized key on KVDB, initialize it with seed data
-          console.log('Shared cloud database is empty. Initializing...');
-          await axios.post('https://kvdb.io/FS13hStgD5SZR9MQZj2wza/open_diary', initialOfflineSeeds);
-          setReflections(initialOfflineSeeds);
-          localStorage.setItem('local_open_diary', JSON.stringify(initialOfflineSeeds));
-          if (!isPolling) setLoading(false);
-          return;
-        }
-        throw cloudErr;
       }
     } catch (err) {
-      console.warn('API and Cloud DB both unreachable. Querying localStorage fallback...');
+      console.warn('Error during synchronization:', err);
     }
 
-    // Offline local device storage fallback
-    if (!isPolling) {
-      const stored = localStorage.getItem('local_open_diary');
-      if (stored) {
-        try {
-          setReflections(JSON.parse(stored));
-        } catch (e) {
-          setReflections(initialOfflineSeeds);
-        }
-      } else {
+    // 3. Offline Local Device Storage Fallback
+    updateDbStatus('offline');
+    const stored = localStorage.getItem('local_open_diary');
+    if (stored) {
+      try {
+        setReflections(JSON.parse(stored));
+      } catch (e) {
         setReflections(initialOfflineSeeds);
-        localStorage.setItem('local_open_diary', JSON.stringify(initialOfflineSeeds));
       }
-      setLoading(false);
+    } else {
+      setReflections(initialOfflineSeeds);
+      localStorage.setItem('local_open_diary', JSON.stringify(initialOfflineSeeds));
     }
+    setLoading(false);
   };
 
   useEffect(() => {
@@ -145,76 +167,80 @@ const OpenDiary = () => {
     setStatus({ success: null, error: null });
     playPageTurnSound();
 
-    try {
-      // Try to submit to backend API first
-      const res = await api.post('/open-diary', formData);
-      if (res.data && res.data.success) {
-        setStatus({ success: 'Your reflection has been pinned to the board.', error: null });
-        setFormData({ name: '', mood: 'neutral', content: '' });
-        setShowForm(false);
-        fetchReflections();
-        setSubmitting(false);
-        return;
+    const newEntry = {
+      _id: `ref_${Date.now()}`,
+      name: formData.name.trim() || 'Anonymous',
+      content: formData.content.trim(),
+      mood: formData.mood,
+      createdAt: new Date().toISOString()
+    };
+
+    const currentStatus = dbStatusRef.current;
+
+    // 1. Try to submit to backend API if backend was active/connecting
+    if (currentStatus === 'backend' || currentStatus === 'connecting') {
+      try {
+        const res = await api.post('/open-diary', formData, { timeout: 1500 });
+        if (res.data && res.data.success) {
+          setStatus({ success: 'Your reflection has been pinned to the board.', error: null });
+          setFormData({ name: '', mood: 'neutral', content: '' });
+          setShowForm(false);
+          updateDbStatus('backend');
+          await fetchReflections(true); // silent refresh
+          setSubmitting(false);
+          return;
+        }
+      } catch (err) {
+        console.warn('Backend API submission failed/timed out. Transitioning to Cloud DB...', err);
       }
-    } catch (err) {
-      console.warn('Backend API submission failed. Attempting shared cloud database submission...');
     }
 
-    // Try to submit to shared cloud database (KVDB)
+    // 2. Try to submit to shared cloud database (KVDB)
     try {
       let currentList = [];
       try {
-        const cloudRes = await axios.get('https://kvdb.io/FS13hStgD5SZR9MQZj2wza/open_diary');
+        const cloudRes = await axios.get('https://kvdb.io/FS13hStgD5SZR9MQZj2wza/open_diary', { timeout: 3000 });
         if (cloudRes.data && Array.isArray(cloudRes.data)) {
           currentList = cloudRes.data;
         } else {
           currentList = [...initialOfflineSeeds];
         }
       } catch (e) {
+        console.warn('Could not retrieve current cloud ledger for append, starting fresh...', e);
         currentList = [...initialOfflineSeeds];
       }
 
-      const newEntry = {
-        _id: `cloud_ref_${Date.now()}`,
-        name: formData.name.trim() || 'Anonymous',
-        content: formData.content.trim(),
-        mood: formData.mood,
-        createdAt: new Date().toISOString()
-      };
-
       const updatedList = [newEntry, ...currentList];
-      await axios.post('https://kvdb.io/FS13hStgD5SZR9MQZj2wza/open_diary', updatedList);
+      await axios.post('https://kvdb.io/FS13hStgD5SZR9MQZj2wza/open_diary', updatedList, { timeout: 3500 });
       
       localStorage.setItem('local_open_diary', JSON.stringify(updatedList));
       setReflections(updatedList);
+      updateDbStatus('cloud');
       
       setStatus({ success: 'Your reflection has been pinned to the board.', error: null });
       setFormData({ name: '', mood: 'neutral', content: '' });
       setShowForm(false);
+      setSubmitting(false);
+      return;
     } catch (err) {
-      console.warn('Cloud DB submission failed. Saving locally to device only...');
-      try {
-        const stored = localStorage.getItem('local_open_diary');
-        const list = stored ? JSON.parse(stored) : [...initialOfflineSeeds];
-        
-        const newEntry = {
-          _id: `local_ref_${Date.now()}`,
-          name: formData.name.trim() || 'Anonymous',
-          content: formData.content.trim(),
-          mood: formData.mood,
-          createdAt: new Date().toISOString()
-        };
+      console.warn('Cloud DB submission failed/timed out. Saving locally to device only...', err);
+    }
 
-        list.unshift(newEntry);
-        localStorage.setItem('local_open_diary', JSON.stringify(list));
-        setReflections(list);
-        
-        setStatus({ success: 'Pinned to board locally (offline mode).', error: null });
-        setFormData({ name: '', mood: 'neutral', content: '' });
-        setShowForm(false);
-      } catch (e) {
-        setStatus({ success: null, error: 'Failed to record reflection. Please try again.' });
-      }
+    // 3. Save locally to device only (offline fallback)
+    try {
+      const stored = localStorage.getItem('local_open_diary');
+      const list = stored ? JSON.parse(stored) : [...initialOfflineSeeds];
+      
+      list.unshift(newEntry);
+      localStorage.setItem('local_open_diary', JSON.stringify(list));
+      setReflections(list);
+      updateDbStatus('offline');
+      
+      setStatus({ success: 'Pinned to board locally (offline mode).', error: null });
+      setFormData({ name: '', mood: 'neutral', content: '' });
+      setShowForm(false);
+    } catch (e) {
+      setStatus({ success: null, error: 'Failed to record reflection. Please try again.' });
     } finally {
       setSubmitting(false);
       setTimeout(() => setStatus({ success: null, error: null }), 4000);
@@ -225,12 +251,49 @@ const OpenDiary = () => {
     return moodPicker.find(m => m.value === moodVal) || moodPicker[5];
   };
 
+  const renderStatusPill = () => {
+    switch (dbStatus) {
+      case 'connecting':
+        return (
+          <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-slate-500/10 border border-slate-500/30 text-[10px] text-slate-400 font-medium w-fit mx-auto sm:mx-0">
+            <span className="w-1.5 h-1.5 rounded-full bg-slate-400 animate-pulse" />
+            Connecting...
+          </span>
+        );
+      case 'backend':
+        return (
+          <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-emerald-500/10 border border-emerald-500/30 text-[10px] text-emerald-400 font-medium w-fit mx-auto sm:mx-0">
+            <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 shadow-[0_0_6px_#34d399]" />
+            Live Sync
+          </span>
+        );
+      case 'cloud':
+        return (
+          <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-indigo-500/10 border border-indigo-500/30 text-[10px] text-indigo-400 font-medium w-fit mx-auto sm:mx-0">
+            <span className="w-1.5 h-1.5 rounded-full bg-indigo-400 animate-pulse" />
+            Cloud Echo
+          </span>
+        );
+      case 'offline':
+      default:
+        return (
+          <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-rose-500/10 border border-rose-500/30 text-[10px] text-rose-400 font-medium w-fit mx-auto sm:mx-0">
+            <span className="w-1.5 h-1.5 rounded-full bg-rose-400 animate-bounce" />
+            Offline Mode
+          </span>
+        );
+    }
+  };
+
   return (
     <div className="space-y-10 py-6 max-w-6xl mx-auto">
       {/* Header Block */}
       <div className="border-b border-luxury-border/60 pb-6 flex flex-col md:flex-row md:items-end justify-between gap-6 text-center md:text-left">
         <div>
-          <span className="text-xs uppercase tracking-[0.25em] text-luxury-gold font-semibold">The Community Ledger</span>
+          <div className="flex flex-col sm:flex-row sm:items-center gap-3 justify-center md:justify-start">
+            <span className="text-xs uppercase tracking-[0.25em] text-luxury-gold font-semibold">The Community Ledger</span>
+            {renderStatusPill()}
+          </div>
           <h1 className="font-serif text-4xl font-bold tracking-wide mt-1">The Open Diary</h1>
           <p className="text-luxury-muted text-sm mt-1">A public registry of anonymous echoes, passing thoughts, and collective whispers.</p>
         </div>
