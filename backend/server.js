@@ -21,6 +21,7 @@ import poemRoutes from './routes/poemRoutes.js';
 import essayRoutes from './routes/essayRoutes.js';
 import journalRoutes from './routes/journalRoutes.js';
 import contactRoutes from './routes/contactRoutes.js';
+import openDiaryRoutes from './routes/openDiaryRoutes.js';
 
 dotenv.config();
 
@@ -59,7 +60,7 @@ const seedDatabase = async () => {
       
       await dataService.create(User, {
         username: 'admin',
-        email: 'admin@inkandechoes.com',
+        email: 'pratishtha@inkandechoes.com',
         passwordHash,
         role: 'admin'
       });
@@ -67,7 +68,7 @@ const seedDatabase = async () => {
       console.log('✅ Admin user created successfully.');
       console.log('---------------------------------------------');
       console.log('🔑 DEFAULT LOGIN CREDENTIALS:');
-      console.log('   Email:    admin@inkandechoes.com');
+      console.log('   Email:    pratishtha@inkandechoes.com');
       console.log('   Password: adminpassword123');
       console.log('---------------------------------------------');
     }
@@ -121,6 +122,7 @@ app.use('/api/poems', poemRoutes);
 app.use('/api/essays', essayRoutes);
 app.use('/api/journal', journalRoutes);
 app.use('/api/contact', contactRoutes);
+app.use('/api/open-diary', openDiaryRoutes);
 
 // Health Check
 app.get('/api/health', (req, res) => {

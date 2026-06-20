@@ -55,7 +55,7 @@ npm run dev
 
 When the backend runs for the first time, it checks for active users. If empty, it automatically seeds a default administrator profile for evaluation:
 
-- **Email**: `admin@inkandechoes.com`
+- **Email**: `pratishtha@inkandechoes.com`
 - **Password**: `adminpassword123`
 
 You can use these credentials by clicking the **Gate** button in the header navigation.

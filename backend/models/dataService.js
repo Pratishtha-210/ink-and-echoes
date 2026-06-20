@@ -4,6 +4,7 @@ import Poem from './Poem.js';
 import Essay from './Essay.js';
 import Journal from './Journal.js';
 import Contact from './Contact.js';
+import OpenDiary from './OpenDiary.js';
 
 // Map of model name to collection key
 const getCollectionName = (modelName) => {

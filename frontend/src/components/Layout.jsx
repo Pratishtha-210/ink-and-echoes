@@ -51,6 +51,13 @@ const Layout = ({ children }) => {
               Thoughts
             </NavLink>
             <NavLink 
+              to="/open-diary" 
+              onClick={playPageTurnSound}
+              className={({ isActive }) => `hover:text-luxury-gold transition-colors duration-300 ${isActive ? 'text-luxury-gold border-b border-luxury-gold/50 pb-1' : 'text-luxury-muted'}`}
+            >
+              Open Diary
+            </NavLink>
+            <NavLink 
               to="/about" 
               onClick={playPageTurnSound}
               className={({ isActive }) => `hover:text-luxury-gold transition-colors duration-300 ${isActive ? 'text-luxury-gold border-b border-luxury-gold/50 pb-1' : 'text-luxury-muted'}`}
@@ -125,6 +132,7 @@ const Layout = ({ children }) => {
           <div className="flex gap-6 text-xs uppercase tracking-widest">
             <Link to="/" onClick={playPageTurnSound} className="hover:text-luxury-gold transition-colors duration-300">Home</Link>
             <Link to="/library" onClick={playPageTurnSound} className="hover:text-luxury-gold transition-colors duration-300">Library</Link>
+            <Link to="/open-diary" onClick={playPageTurnSound} className="hover:text-luxury-gold transition-colors duration-300">Diary</Link>
             <Link to="/contact" onClick={playPageTurnSound} className="hover:text-luxury-gold transition-colors duration-300">Contact</Link>
             <Link to="/login" onClick={playPageTurnSound} className="hover:text-luxury-gold transition-colors duration-300">Portal</Link>
           </div>

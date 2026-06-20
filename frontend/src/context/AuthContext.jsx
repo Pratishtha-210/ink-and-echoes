@@ -53,11 +53,11 @@ export const AuthProvider = ({ children }) => {
     } catch (err) {
       // Offline fallback: If API fails for ANY reason (network error, status 401/403/404/500/502 etc.)
       // and credentials match the default admin credentials, let them log in anyway.
-      if (email === 'admin@inkandechoes.com' && password === 'adminpassword123') {
+      if (email === 'pratishtha@inkandechoes.com' && password === 'adminpassword123') {
         const mockUser = {
           id: 'mock_admin_id',
           username: 'admin',
-          email: 'admin@inkandechoes.com',
+          email: 'pratishtha@inkandechoes.com',
           role: 'admin',
           isOffline: true
         };

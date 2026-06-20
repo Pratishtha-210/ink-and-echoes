@@ -16,6 +16,7 @@ import Login from './pages/Login.jsx';
 import JournalDashboard from './pages/JournalDashboard.jsx';
 import JournalEditor from './pages/JournalEditor.jsx';
 import AdminDashboard from './pages/AdminDashboard.jsx';
+import OpenDiary from './pages/OpenDiary.jsx';
 
 // Global Layout & Protective Route Gates & Transitions
 import Layout from './components/Layout.jsx';
@@ -48,6 +49,7 @@ const AnimatedAppContent = () => {
         <Route path="/thoughts/:id" element={<PageTransition><EssayDetail /></PageTransition>} />
         <Route path="/contact" element={<PageTransition><Contact /></PageTransition>} />
         <Route path="/login" element={<PageTransition><Login /></PageTransition>} />
+        <Route path="/open-diary" element={<PageTransition><OpenDiary /></PageTransition>} />
 
         {/* Secure Private Journal Routes */}
         <Route 

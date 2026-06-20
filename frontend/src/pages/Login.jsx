@@ -101,7 +101,7 @@ const Login = () => {
               required
               value={formData.email}
               onChange={handleChange}
-              placeholder="e.g. admin@inkandechoes.com"
+              placeholder="e.g. pratishtha@inkandechoes.com"
               className="w-full px-4 py-2.5 bg-black border border-luxury-border focus:border-luxury-gold focus:outline-none rounded-xl text-xs text-white placeholder:text-luxury-muted/50 transition-all duration-300"
             />
           </div>
@@ -157,7 +157,7 @@ const Login = () => {
                 setError(null);
                 setSubmitting(true);
                 try {
-                  await login('admin@inkandechoes.com', 'adminpassword123');
+                  await login('pratishtha@inkandechoes.com', 'adminpassword123');
                   navigate('/journal');
                 } catch (err) {
                   setError(err.message || 'Authentication failed.');
@@ -176,7 +176,7 @@ const Login = () => {
         {!isRegistering && (
           <div className="p-3 border border-luxury-border/80 bg-luxury-border/20 text-luxury-muted text-[10px] rounded-lg leading-relaxed text-center font-light">
             💡 Local environment seeds a default user: <br />
-            <strong>admin@inkandechoes.com</strong> / <strong>adminpassword123</strong>
+            <strong>pratishtha@inkandechoes.com</strong> / <strong>adminpassword123</strong>
           </div>
         )}
 
