@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { PenTool, MessageSquare, Feather, Smile, Clock, Sparkles, X, Heart, AlertCircle, Check } from 'lucide-react';
 import api from '../utils/api.js';
 import { playPageTurnSound } from '../utils/soundEffects.js';
+import axios from 'axios';
 
 const OpenDiary = () => {
   const [reflections, setReflections] = useState([]);
@@ -55,18 +56,46 @@ const OpenDiary = () => {
   const fetchReflections = async (isPolling = false) => {
     try {
       if (!isPolling) setLoading(true);
-      const res = await api.get('/open-diary');
-      if (res.data && res.data.success) {
-        setReflections(res.data.data);
-        localStorage.setItem('local_open_diary', JSON.stringify(res.data.data));
-        if (!isPolling) setLoading(false);
-        return;
+      
+      // Try backend API first
+      try {
+        const res = await api.get('/open-diary');
+        if (res.data && res.data.success) {
+          setReflections(res.data.data);
+          localStorage.setItem('local_open_diary', JSON.stringify(res.data.data));
+          if (!isPolling) setLoading(false);
+          return;
+        }
+      } catch (backendErr) {
+        console.warn('Backend API unreachable. Trying shared cloud database...');
+      }
+
+      // Fallback to shared cloud database (KVDB)
+      try {
+        const cloudRes = await axios.get('https://kvdb.io/FS13hStgD5SZR9MQZj2wza/open_diary');
+        if (cloudRes.data && Array.isArray(cloudRes.data)) {
+          setReflections(cloudRes.data);
+          localStorage.setItem('local_open_diary', JSON.stringify(cloudRes.data));
+          if (!isPolling) setLoading(false);
+          return;
+        }
+      } catch (cloudErr) {
+        if (cloudErr.response?.status === 404) {
+          // Uninitialized key on KVDB, initialize it with seed data
+          console.log('Shared cloud database is empty. Initializing...');
+          await axios.post('https://kvdb.io/FS13hStgD5SZR9MQZj2wza/open_diary', initialOfflineSeeds);
+          setReflections(initialOfflineSeeds);
+          localStorage.setItem('local_open_diary', JSON.stringify(initialOfflineSeeds));
+          if (!isPolling) setLoading(false);
+          return;
+        }
+        throw cloudErr;
       }
     } catch (err) {
-      console.warn('API error loading open diary entries. Querying localStorage fallback...');
+      console.warn('API and Cloud DB both unreachable. Querying localStorage fallback...');
     }
 
-    // Offline localStorage fallback (only trigger if not polling, to avoid resetting UI state)
+    // Offline local device storage fallback
     if (!isPolling) {
       const stored = localStorage.getItem('local_open_diary');
       if (stored) {
@@ -117,15 +146,53 @@ const OpenDiary = () => {
     playPageTurnSound();
 
     try {
+      // Try to submit to backend API first
       const res = await api.post('/open-diary', formData);
       if (res.data && res.data.success) {
         setStatus({ success: 'Your reflection has been pinned to the board.', error: null });
         setFormData({ name: '', mood: 'neutral', content: '' });
         setShowForm(false);
         fetchReflections();
+        setSubmitting(false);
+        return;
       }
     } catch (err) {
-      console.warn('API submission failed. Saving open diary reflection locally...');
+      console.warn('Backend API submission failed. Attempting shared cloud database submission...');
+    }
+
+    // Try to submit to shared cloud database (KVDB)
+    try {
+      let currentList = [];
+      try {
+        const cloudRes = await axios.get('https://kvdb.io/FS13hStgD5SZR9MQZj2wza/open_diary');
+        if (cloudRes.data && Array.isArray(cloudRes.data)) {
+          currentList = cloudRes.data;
+        } else {
+          currentList = [...initialOfflineSeeds];
+        }
+      } catch (e) {
+        currentList = [...initialOfflineSeeds];
+      }
+
+      const newEntry = {
+        _id: `cloud_ref_${Date.now()}`,
+        name: formData.name.trim() || 'Anonymous',
+        content: formData.content.trim(),
+        mood: formData.mood,
+        createdAt: new Date().toISOString()
+      };
+
+      const updatedList = [newEntry, ...currentList];
+      await axios.post('https://kvdb.io/FS13hStgD5SZR9MQZj2wza/open_diary', updatedList);
+      
+      localStorage.setItem('local_open_diary', JSON.stringify(updatedList));
+      setReflections(updatedList);
+      
+      setStatus({ success: 'Your reflection has been pinned to the board.', error: null });
+      setFormData({ name: '', mood: 'neutral', content: '' });
+      setShowForm(false);
+    } catch (err) {
+      console.warn('Cloud DB submission failed. Saving locally to device only...');
       try {
         const stored = localStorage.getItem('local_open_diary');
         const list = stored ? JSON.parse(stored) : [...initialOfflineSeeds];
